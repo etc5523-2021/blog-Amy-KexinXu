@@ -1,0 +1,15 @@
+html {
+  --title-size:      50px;
+  --body-size:       1.075rem;
+  --code-size:       14px;
+  --aside-size:      12px;
+  --fig-cap-size:    13px;
+}
+
+.distill-site-header {
+  --title-size:       30px;    
+  --text-color:       #535663;
+  --text-size:        17px;
+  --hover-color:      #63C6FF;
+  --bkgd-color:       #CBD7FF;
+}

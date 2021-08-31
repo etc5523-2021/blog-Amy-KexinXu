@@ -1,0 +1,197 @@
+---
+title: "Covid-19 in Italy"
+author:
+  - name: Kexin Xu
+date: 08-25-2021
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    toc_float: false
+    code_folding: true
+---
+
+## Introduction
+
+According to the latest statistics released by the Italian Ministry of Health on August 29, there were 5,959 new COVID-19 cases in Italy in 24 hours, bringing the total number of confirmed COVID-19 cases to 4,530,246. A total of 37 new deaths were reported, with 129,093 deaths in total. These are numbers written on the paper but represent people's health and even life! Let's now dig into those numbers and look through cases and deaths over the last two years.
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(gt)
+library(glue)
+library(gganimate)
+library(plotly)
+library(kableExtra)
+```
+
+```{r eval = FALSE}
+#coronavirus <- readRDS("coronavirus.rds")
+map <- coronavirus %>% 
+  group_by(country, type) %>%
+  summarise(cases = sum(cases)) %>%
+  left_join(map_data("world"), by = c("country" = "region")) %>%
+  filter(type == "confirmed") %>%
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = group,
+             text = country)) +
+  geom_polygon(aes(fill = cases), 
+               colour = "gray50") +
+  scale_fill_continuous(type = "viridis") +
+  scale_x_continuous(breaks = seq(-180, 210, 45)) +
+  scale_y_continuous(breaks = seq(-60, 100, 30)) +
+  labs(x = "Longitude", 
+       y = "Latitude") +
+  theme_light()
+
+ggplotly(map)
+```
+## Data description
+  
+Data is sourced from [WHO Coronavirus (COVID-19) Dashboard](https://covid19.who.int/info/). It is a worldwide data related to Coronavirus situation from the beginning of 2020 till now and only data of Italy is selected here. Variables and types are as follow.  
+
+```{r}
+Italytable <- tribble(
+  ~Variable, ~Type, ~Description,
+  "Date_reported", "date", "The date reported",
+  "Country_code", "character", "Counrty code",
+  "Country", "character", "Country name",
+  "WHO_region", "character", "Region of country in WHO",
+  "New_cases", "double", "Daily new cases",
+  "Cumulative_cases", "double", "Cumulative cases",
+  "New_deaths", "double", "Daily new deaths",
+  "Cumulative_deaths", "double", "Cumulative deaths"
+) %>%
+  as.data.frame()
+kable(Italytable) %>%
+  kable_styling("striped", position = 'center')
+```
+
+
+```{r}
+WHO_COVID_19_global_data <- read_csv(here::here("_posts/post1/WHO-COVID-19-global-data.csv"))
+Italy <- WHO_COVID_19_global_data %>%
+  filter(Country == "Italy")
+```
+## Data exploration
+
+```{r echo = FALSE}
+Italy <- Italy %>%
+  select(-c(Country_code, Country, WHO_region))
+DT::datatable(Italy, 
+              options = list(pageLength = 10), 
+              caption = "Cases & Deaths in Italy from 2020 to the present")
+```
+
+
+Surprisingly, when sorted by `New_cases` or `New_deaths` in ascending order, you may find that there are 2 negative numbers which seem unreasonable. Why is this?  
+After checking the WHO Dashboard we can find: due to the trend of countries conducting data reconciliation exercises which remove large numbers of cases or deaths from their total counts, such data may reflect as negative numbers in the new cases / new deaths counts as appropriate.  
+
+
+```{r}
+Cases <- Italy %>%
+  ggplot(aes(x = Date_reported)) +
+  geom_area(aes(y = Cumulative_cases), fill = "lavender") +
+  xlab("") +
+  ylab("Cumulative Cases") +
+  theme_bw() +
+  scale_x_date(breaks = "82 days") +
+  transition_reveal(Date_reported)
+
+Deaths <- Italy %>%
+  ggplot(aes(x = Date_reported)) +
+  geom_area(aes(y = Cumulative_deaths), fill = "lightcyan") +
+  xlab("") +
+  ylab("Cumulative Deaths") +
+  theme_bw() +
+  scale_x_date(breaks = "82 days") +
+  transition_reveal(Date_reported)
+
+Cases
+Deaths
+```
+
+
+
+```{r echo = FALSE}
+start_date <- min(Italy$Date_reported)
+end_date <- max(Italy$Date_reported)
+Italy_Cases <- Italy %>%
+  select(c(Date_reported, New_cases)) %>%
+  filter(New_cases %in% c(fivenum(Italy$New_cases))) %>%
+  rename("New" = "New_cases") %>%
+  arrange(New)
+Italy_Deaths <- Italy %>%
+  select(c(Date_reported, New_deaths)) %>%
+  filter(New_deaths %in% c(fivenum(Italy$New_deaths))) %>%
+  rename("New" = "New_deaths") %>%
+  arrange(New)
+Italy_Summary <- rbind(Italy_Cases, Italy_Deaths)
+Statistics <- c("Minimum", "1st Quantile", "Median", "3rd Quantile", "Maximum",
+          "Minimum", "1st Quantile", "1st Quantile", "1st Quantile", "1st Quantile", "1st Quantile", "1st Quantile", "Median", "3rd Quantile", "3rd Quantile", "3rd Quantile", "Maximum")
+Italy_Summary <- cbind(Italy_Summary[,1], Statistics, Italy_Summary[,2])
+
+Italy_Summary %>%
+  gt() %>%
+  tab_header(title = "Summary of Daily New Cases & Deaths",
+             subtitle = glue::glue("{start_date} to {end_date}")) %>%
+    tab_row_group(
+    label = "Daily Deaths",
+    rows = 6:17
+  ) %>%
+   tab_row_group(
+    label = "Daily Cases",
+    rows = 1:5
+  ) %>%
+ cols_width(
+    everything() ~ px(215)
+  ) %>%
+  cols_align(align = c("center"),
+  columns = 2) %>%
+  tab_options(heading.background.color = "slategray1", 
+              row_group.background.color = "lavender",
+              source_notes.background.color = "lightcyan") %>%
+  tab_source_note(
+    source_note = "Source: WHO Coronavirus (COVID-19) Dashboard"
+  ) %>%
+  tab_options(row_group.border.bottom.color = "grey")
+
+```
+## Data story
+
+Do you notice a surge that appears in the giFs in around November 2020? The Coronavirus came so suddenly that Italians didn't realize how serious the problem was, causing the collapse of a previously stable health care system. At that time hospitals couldn't accept any more patients so that people can't get treatment in time which led to a bigger outbreak of COVID-19. However, just look carefully through the summary table! Although the number of confirmed cases has decreased in recent months, it is still a relatively large number. During the same period, the number of deaths decreased significantly, with much fewer deaths in June and July 2021 than at the beginning of the year, reflecting a steady improvement in cure rates. The recovery of the epidemic cannot be achieved without improved national policy controls, a better health systems or the subsequent advent of vaccines! That's a good omen, isn't it?    
+
+Anyway, I wish Italian people, also people all around the world, a good health and a speedy recovery from the COVID-19!
+
+## Refenrence
+
+### Data source
+
+WHO Coronavirus (COVID-19) Dashboard https://covid19.who.int/info/
+
+
+### Software
+
+R Core Team (2020). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+
+### Packages
+
+Hao Zhu (2021). kableExtra: Construct Complex Table with 'kable' and Pipe Syntax. R package version 1.3.4. https://CRAN.R-project.org/package=kableExtra
+
+JJ Allaire and Yihui Xie and Jonathan McPherson and Javier Luraschi and Kevin Ushey and Aron Atkins and Hadley Wickham and Joe Cheng and Winston Chang and Richard Iannone (2021). rmarkdown: Dynamic Documents for R. R package version 2.10. URL https://rmarkdown.rstudio.com.
+
+Kirill Müller and Hadley Wickham (2021). tibble: Simple Data Frames. R package version 3.1.3. https://CRAN.R-project.org/package=tibble
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+Richard Iannone, Joe Cheng and Barret Schloerke (2021). gt: Easily Create Presentation-Ready Display Tables. R package version 0.3.1.https://CRAN.R-project.org/package=gt
+
+Jim Hester (2020). glue: Interpreted String Literals. R package version 1.4.2. https://CRAN.R-project.org/package=glue
+
+Thomas Lin Pedersen and David Robinson (2020). gganimate: A Grammar of Animated Graphics. R package version 1.0.7.https://CRAN.R-project.org/package=gganimate
+
+C. Sievert. Interactive Web-Based Data Visualization with R, plotly, and shiny. Chapman and Hall/CRC Florida, 2020.
+
+
+

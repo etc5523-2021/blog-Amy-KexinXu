@@ -1,0 +1,22 @@
+---
+title: "Welcome to Covid-19 Situation"
+description: |
+  Welcome to our blog, it is something related to coronavirus situations and let's now look through to see if there's any significant findings!
+author:
+  - name: Kexin Xu
+date: 08-24-2021
+output:
+  distill::distill_article:
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+# Learn more about creating blogs with Distill at:
+# https://rstudio.github.io/distill/blog.html
+
+```
+
+
+

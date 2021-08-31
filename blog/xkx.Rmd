@@ -1,0 +1,18 @@
+---
+title: "Kexin Xu"
+image: "xkx.jpg"
+color1: "#8AC5F4"
+color2: "#ABFAFA"
+angle: 130
+links:
+  - label: Twitter
+    url: "https://twitter.com/Amy13614332"
+  - label: GitHub
+    url: "https://github.com/Amy-KexinXu"
+  - label: Email
+    url: "kxuu0029@student.monash.edu"
+output:
+  postcards::onofre
+---
+ 
+I am a master student 
