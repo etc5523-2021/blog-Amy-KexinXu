@@ -2,7 +2,7 @@
 
 
 This is the blog of Kexin Xu.
-The URL of this blog is blog-kexinxu.netlify.app.
+The URL of this blog is blog-kexinxu.netlify.app
 
 ## Blog Post 1
 

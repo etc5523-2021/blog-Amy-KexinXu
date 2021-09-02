@@ -1,5 +1,7 @@
 ---
 title: "Covid-19 in Italy"
+description: |
+  Let's look firstly through the situation in Italy!
 author:
   - name: Kexin Xu
 date: 08-25-2021
@@ -24,28 +26,6 @@ library(plotly)
 library(kableExtra)
 ```
 
-```{r eval = FALSE}
-#coronavirus <- readRDS("coronavirus.rds")
-map <- coronavirus %>% 
-  group_by(country, type) %>%
-  summarise(cases = sum(cases)) %>%
-  left_join(map_data("world"), by = c("country" = "region")) %>%
-  filter(type == "confirmed") %>%
-  ggplot(aes(x = long, 
-             y = lat, 
-             group = group,
-             text = country)) +
-  geom_polygon(aes(fill = cases), 
-               colour = "gray50") +
-  scale_fill_continuous(type = "viridis") +
-  scale_x_continuous(breaks = seq(-180, 210, 45)) +
-  scale_y_continuous(breaks = seq(-60, 100, 30)) +
-  labs(x = "Longitude", 
-       y = "Latitude") +
-  theme_light()
-
-ggplotly(map)
-```
 ## Data description
   
 Data is sourced from [WHO Coronavirus (COVID-19) Dashboard](https://covid19.who.int/info/). It is a worldwide data related to Coronavirus situation from the beginning of 2020 till now and only data of Italy is selected here. Variables and types are as follow.  
