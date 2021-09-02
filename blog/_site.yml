@@ -3,7 +3,7 @@ title: "Covid-19"
 theme: theme.css
 description: |
   Covid-19 in Italy & 
-output_dir: "_site"
+output_dir: "docs"
 navbar:
   right:
     - text: "Home"
