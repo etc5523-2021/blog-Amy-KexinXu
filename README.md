@@ -2,7 +2,7 @@
 
 
 This is the blog of Kexin Xu.
-The URL of this blog is blog-kexinxu.netlify.app
+The URL of this blog is https://blog-kexinxu.netlify.app
 
 ## Blog Post 1
 
@@ -10,7 +10,7 @@ This assessment is due Fri Sep 3 2021 11.55PM AEST.
 
 My selected country is Italy.
 
-The relevant blog post for this assessment is in blog-kexinxu.netlify.app/posts/post1.html
+The relevant blog post for this assessment is in https://blog-kexinxu.netlify.app/posts/post1.html
 
 - [ ] Selected a country
 - [ ] Website with R markdown 
