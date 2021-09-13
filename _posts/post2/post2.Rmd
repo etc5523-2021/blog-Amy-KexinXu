@@ -120,6 +120,7 @@ EUCovid <- EUCoords %>%
   left_join(WHO_COVID_19_global_data, 
             by = c("region" = "Country"))
 
+options(scipen=10000)
 ggplot() + 
   geom_polygon(data = EUCovid,
                aes(x = long, 
@@ -150,30 +151,6 @@ ggplot() +
 From the map above we can clearly see that Switzerland (framed in black) has a relatively low number of confirmed cases, but neighboring countries like France, Italy and Germany are roughly high in confirmed cases, especially in France. In addition, Switzerland may look better simply because its small territory with relatively smaller population than other countries. Thus, it cannot be concluded that the situation in Switzerland is mild.  
 
 
-
-```{r eval = FALSE}
-ui <- fluidPage(
-  sliderInput(inputId = "Date",
-              label = "Date reported",
-              max = max(Switzerland$Date_reported),
-              min = min(Switzerland$Date_reported),
-              value = min(Switzerland$Date_reported)),
-  plotOutput("line"))
-
-server <- function(input, output){
-  output$line <- renderPlot({
-    title <- "Cumulative Cases in Switzerland"
-    Switzerland %>%
-      ggplot(aes(Date_reported)) +
-      geom_area(aes(y = Cumulative_cases), fill = "lavender") +
-      xlab("") +
-      ylab("Cumulative Cases") +
-      theme_bw() +
-      scale_x_date(breaks = "3 months")
-  })}
-
-shinyApp(server = server, ui = ui)
-```
 
 ```{r}
 Switzerland$weeks <- floor_date(Switzerland$Date_reported, "week")
