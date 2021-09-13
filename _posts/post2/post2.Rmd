@@ -1,0 +1,334 @@
+---
+title: "Covid-19 in Switzerland"
+description: |
+  Let's see what can we find about the COVID situation in Switzerland!
+categories:
+  - COVID-19
+  - Vaccines
+  - plotly
+  - map
+author:
+  - name: Kexin Xu
+date: 09-05-2021
+output:
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    toc_float: true
+    code_folding: true
+---
+
+## Introduction`r emo::ji("cheese")`  
+
+Switzerland, federated country of central Europe. Switzerland’s small size — its total area is about half that of Scotland — and its modest population give little indication of its international significance.  
+
+Now, some news about COVID-19:  
+This week, 18,055 new cases of Covid-19 were reported in Switzerland, rising less than 1% (0.3%) from the week before (17,997).  
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(gganimate)
+library(plotly)
+library(kableExtra)
+library(shiny)
+library(grid)
+library(rworldmap)
+library(lubridate)
+```
+
+## Data description`r emo::ji("page")`
+
+The first data set is sourced from [WHO Coronavirus (COVID-19) Dashboard](https://covid19.who.int/info/). It is a worldwide data related to Coronavirus situation from the beginning of 2020 till now and only data of Switzerland is selected here. Variables and descriptions are as follow.   
+
+```{r}
+Switzerlandtable <- tribble(
+  ~Variable, ~Description,
+  "Date_reported", "The date reported",
+  "Country_code", "Counrty code",
+  "Country", "Country name",
+  "WHO_region", "Region of country in WHO",
+  "New_cases", "Daily new cases",
+  "Cumulative_cases", "Cumulative cases",
+  "New_deaths", "Daily new deaths",
+  "Cumulative_deaths", "Cumulative deaths"
+) %>%
+  as.data.frame()
+kable(Switzerlandtable) %>%
+  kable_styling("striped", position = 'center')
+```
+The second data set is sourced from [Our World in Data](https://ourworldindata.org/). It is related to the vaccination status all over the world, updated each day till now. Similarly, Switzerland is selected here. Variables and descriptions are shown below.
+
+```{r}
+Switzerlandvactable <- tribble(
+  ~Variable, ~Description,
+  "date", "The date reported",
+  "total_vaccinations", "Total vaccinations",
+  "people_vaccinated", "People with at least 1 dose",
+  "people_fully_vaccinated", "People fully vaccinated"
+) %>%
+  as.data.frame()
+kable(Switzerlandvactable) %>%
+  kable_styling("striped", position = 'center')
+```
+
+
+```{r}
+WHO_COVID_19_global_data <- read_csv(here::here("_posts/post2/WHO-COVID-19-global-data.csv")) %>%
+  mutate(Country = ifelse(Country == "Russian Federation", "Russia", Country),
+         Country = ifelse(Country == "The United Kingdom", "United Kingdom", Country),
+         Country = ifelse(Country == "Czechia", "Czech Rep.", Country),
+         Country = ifelse(Country == "Republic of Moldova", "Moldova", Country)
+)
+
+Switzerland <- WHO_COVID_19_global_data %>%
+  filter(Country == "Switzerland") %>%
+  select(-c(Country_code, Country, WHO_region))
+
+vaccinations <- read_csv(here::here("_posts/post2/vaccinations.csv"))
+
+Switzerland_vaccine <- vaccinations %>% 
+  filter(location == "Switzerland") %>%
+  select(-c(location, iso_code, total_boosters, total_boosters_per_hundred))
+Switzerland_vaccine[is.na(Switzerland_vaccine)] <- 0
+
+```
+## Data exploration & Data stories`r emo::ji("world")`
+
+
+```{r}
+
+worldMap <- getMap()
+
+EU <- c("Austria","Belgium","Bulgaria","Croatia","Cyprus","Czech Rep.","Denmark","Estonia","Finland","France","Germany","Greece","Hungary","Ireland","Italy","Latvia","Lithuania","Luxembourg","Malta","Netherlands","Poland","Portugal","Romania","Slovakia","Slovenia","Spain","Sweden","United Kingdom","Andorra","Armenia","Azerbaijan","Belarus","Georgia","Iceland","Liechtenstein","Moldova","Monaco","Norway","Russia","San Marino","Switzerland","Ukraine","United Kingdom","Vatican City")
+
+indEU <- which(worldMap$NAME %in% EU)
+```
+
+First of all, let's look through the COVID-19 situation all over Europe!  
+
+```{r fig.width = 8}
+EUCoords <- lapply(indEU, function(i){
+  df <- data.frame(worldMap@polygons[[i]]@Polygons[[1]]@coords)
+  df$region =as.character(worldMap$NAME[i])
+  colnames(df) <- list("long", "lat", "region")
+  return(df)
+})
+
+EUCoords <- do.call("rbind", EUCoords)
+
+EUCovid <- EUCoords %>%
+  left_join(WHO_COVID_19_global_data, 
+            by = c("region" = "Country"))
+
+ggplot() + 
+  geom_polygon(data = EUCovid,
+               aes(x = long, 
+                   y = lat, 
+                   group = region, 
+                   fill = Cumulative_cases),
+               colour = "black", 
+               size = 0.1) +
+  scale_fill_distiller(palette = "Purples", trans = "reverse") +
+  annotate("rect", 
+           xmin = 6, 
+           xmax = 11, 
+           ymin = 45, 
+           ymax = 48,
+           alpha = 0.2, 
+           color = "black") + 
+  labs(title = "COVID-19 Cumulative Cases in Europe") +
+  theme(plot.title = element_text(face="bold")) +
+  theme_light() +
+  theme(axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank(), 
+        axis.title = element_blank()) +
+  transition_time(Date_reported)
+
+```
+From the map above we can clearly see that Switzerland (framed in black) has a relatively low number of confirmed cases, but neighboring countries like France, Italy and Germany are roughly high in confirmed cases, especially in France. In addition, Switzerland may look better simply because its small territory with relatively smaller population than other countries. Thus, it cannot be concluded that the situation in Switzerland is mild.  
+
+
+
+```{r eval = FALSE}
+ui <- fluidPage(
+  sliderInput(inputId = "Date",
+              label = "Date reported",
+              max = max(Switzerland$Date_reported),
+              min = min(Switzerland$Date_reported),
+              value = min(Switzerland$Date_reported)),
+  plotOutput("line"))
+
+server <- function(input, output){
+  output$line <- renderPlot({
+    title <- "Cumulative Cases in Switzerland"
+    Switzerland %>%
+      ggplot(aes(Date_reported)) +
+      geom_area(aes(y = Cumulative_cases), fill = "lavender") +
+      xlab("") +
+      ylab("Cumulative Cases") +
+      theme_bw() +
+      scale_x_date(breaks = "3 months")
+  })}
+
+shinyApp(server = server, ui = ui)
+```
+
+```{r}
+Switzerland$weeks <- floor_date(Switzerland$Date_reported, "week")
+cases_avg <- Switzerland %>%
+  group_by(weeks) %>%
+  summarise(mean = mean(New_cases))
+cases <- Switzerland %>%
+  ggplot(aes(x = Date_reported,
+             y = New_cases)) +
+  geom_col(fill = "lightcyan") +
+  geom_line(data = cases_avg,
+            aes(x = weeks,
+                y = mean),
+            color = "skyblue") +
+  scale_x_date(breaks = "3 months") +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(title = "Daily Cases in Switzerland",
+       x = "",
+       y = "") +
+  annotate("text",
+           x = as.Date("2021-01-19"),
+           y = 7500,
+           label = "week average",
+           color = "deepskyblue") +
+  theme_light()
+ggplotly(cases)
+```
+
+```{r}
+deaths_avg <- Switzerland %>%
+  group_by(weeks) %>%
+  summarise(mean = mean(New_deaths))
+deaths <- Switzerland %>%
+  ggplot(aes(x = Date_reported)) +
+  geom_col(aes(y = New_deaths), fill = "lavender") +
+  geom_line(data = deaths_avg,
+            aes(x = weeks,
+                y = mean),
+            color = "palevioletred") +
+  scale_x_date(breaks = "3 months") +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(title = "Daily Deaths in Switzerland",
+       x = "",
+       y = "") +
+  annotate("text",
+           x = as.Date("2021-03-01"),
+           y = 90,
+           label = "week average",
+           color = "palevioletred3") +
+  theme_light()
+ggplotly(deaths)
+```
+
+### Second Outbreak in Europe`r emo::ji("explode")`  
+
+There are 2 obvious peaks present in daily deaths while a surge appears at the same time of the second peak in daily cases. It could be considered as a second outbreak of coronavirus in Europe. (The first one is considered beginning in around March 2020)  
+
+Why would that happen in Switzerland?  
+
+From the news at that time, the second outbreak of the epidemic appeared and none of European countries was spared.  
+
+The main reason for it is that they didn't take it seriously enough. Once they saw the situation getting better, they opened up social gatherings and even allowed football leagues to resume, which would have accelerated the spread of the virus. The control measures in these countries were so weak and they were not prepared for a long-term fight. At that moment, COVID-19 situation in European countries was not optimistic, still aggressive. Their initiatives and policies brought greater hidden dangers to the whole epidemic and left a large space for the spread of the virus.  
+
+As for Switzerland, though it is relatively small in size of population and land area, its proximity to countries with large populations such as France and Italy makes it vulnerable to the outbreak, especially for its frequent population flow.  
+
+
+
+```{r}
+vac <- Switzerland_vaccine %>%
+  ggplot(aes(x = date)) +
+  geom_area(aes(y = people_vaccinated), fill = "lightblue", alpha = 0.5) +
+  geom_area(aes(y = people_fully_vaccinated), fill = "lightblue") +
+  scale_x_date(breaks = "45 days") +
+  scale_y_continuous(labels = scales::comma) + 
+  labs(title = "Vaccination in Switzerland",
+       x = "",
+       y = "Number of Vaccinated People") +
+  annotate("text",
+           x = as.Date("2021-07-02"),
+           y = 1500000,
+           label = "people fully vaccinated") +
+  annotate("text",
+           x = as.Date("2021-05-18"),
+           y = 3000000,
+           label = "people with at least 1 dose") +
+  theme_light()
+ggplotly(vac)
+```
+### Outbreak on the mend -- Vaccines appear`r emo::ji("health")`  
+  
+As knowledge of the virus grows, so does the development of the corresponding vaccine. The vaccine became available in Switzerland at the end of 2020 and as time went by, more people got vaccinated.  
+
+Comparing to the plots above, both the number of confirmed cases and the number of deaths began to decline significantly from the end of 2020 which means that the emergence of vaccines and improvements in the medical system have contributed greatly to the turnaround of the epidemic.
+
+It has to be said that vaccines have been so effective in reducing the number of cases and deaths, especially deaths. The Swiss people are also gradually aware of the seriousness of the epidemic and actively vaccinated.
+  
+Apart from that, it is worth mentioning that there has been new setbacks in the COVID-19 pandemic as recently as June and July 2021. Due to the mutation of virus,a new virus, Delta, has begun to spread. At present, there is no comprehensive countermeasure for it. Thus, what we can do now is follow the arrangements of the government and wish a more effective way to deal with it ASAP.
+
+
+## Reference`r emo::ji("library")`
+
+### Data source
+
+WHO Coronavirus (COVID-19) Dashboard https://covid19.who.int/info/
+Our World in Data https://ourworldindata.org/
+
+### Software
+
+R Core Team (2020). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+
+### Packages
+
+Hao Zhu (2021). kableExtra: Construct Complex Table with 'kable' and Pipe Syntax. R package version 1.3.4. https://CRAN.R-project.org/package=kableExtra
+
+JJ Allaire and Yihui Xie and Jonathan McPherson and Javier Luraschi and Kevin Ushey and Aron Atkins and Hadley Wickham and Joe Cheng and Winston Chang and Richard Iannone (2021). rmarkdown: Dynamic Documents for R. R package version 2.10. URL https://rmarkdown.rstudio.com.
+
+R Core Team (2021). R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+Kirill Müller and Hadley Wickham (2021). tibble: Simple Data Frames. R package version 3.1.3. https://CRAN.R-project.org/package=tibble
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+
+Thomas Lin Pedersen and David Robinson (2020). gganimate: A Grammar of Animated Graphics. R package version 1.0.7.https://CRAN.R-project.org/package=gganimate
+
+C. Sievert. Interactive Web-Based Data Visualization with R, plotly, and shiny. Chapman and Hall/CRC Florida, 2020.
+
+South, Andy 2011 rworldmap: A New R package for Mapping Global Data. The R Journal Vol. 3/1 : 35-43.
+
+Garrett Grolemund, Hadley Wickham (2011). Dates and Times Made Easy with lubridate. Journal of Statistical Software, 40(3), 1-25. URL https://www.jstatsoft.org/v40/i03/.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
